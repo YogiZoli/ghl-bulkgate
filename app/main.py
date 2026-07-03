@@ -5,6 +5,8 @@ Endpoints
 GET  /health                     liveness probe (Railway healthcheck)
 GET  /privacy                    standalone Privacy Policy (Marketplace listing)
 GET  /terms                      standalone Terms of Service (Marketplace listing)
+GET  /setup                      onboarding Custom Page (Bulkgate credentials + webhook)
+POST /setup/confirm              installer confirms webhook is wired up in Bulkgate
 GET  /oauth/callback             GHL OAuth install redirect
 POST /ghl/outbound               GHL Conversation-Provider outbound webhook
 GET  /bulkgate/inbound/{token}   Bulkgate DLR + incoming SMS (per-install token)
@@ -27,6 +29,7 @@ from app.config import get_settings
 from app.ghl_client import GHLClient
 from app.legal import PRIVACY_HTML, TERMS_HTML
 from app.services import handle_bulkgate_callback, handle_outbound
+from app.setup_page import render_setup_page
 from app.store import get_store
 
 logging.basicConfig(level=get_settings().log_level)
@@ -57,6 +60,36 @@ async def terms() -> HTMLResponse:
     return HTMLResponse(TERMS_HTML)
 
 
+@app.get("/setup")
+async def setup_page(locationId: str | None = None, location_id: str | None = None):
+    """Onboarding Custom Page: Bulkgate credentials form + webhook URL + confirm step.
+
+    GHL Custom Pages append the sub-account context as a `locationId` query
+    param when the iframe is opened from inside the sub-account. We also
+    accept `location_id` as a fallback for manual testing.
+    """
+    loc = locationId or location_id
+    installation = _store().get_installation(loc) if loc else None
+    webhook_url = None
+    if installation:
+        s = get_settings()
+        base = (s.public_base_url or s.ghl_redirect_uri.rsplit("/oauth", 1)[0]).rstrip("/")
+        webhook_url = f"{base}/bulkgate/inbound/{installation['webhook_token']}"
+    html = render_setup_page(location_id=loc, installation=installation, webhook_url=webhook_url)
+    return HTMLResponse(html)
+
+
+@app.post("/setup/confirm")
+async def setup_confirm(request: Request):
+    """Installer clicked "I've connected the webhook in Bulkgate"."""
+    body = await request.json()
+    location_id = body.get("location_id")
+    if not location_id or not _store().get_installation(location_id):
+        raise HTTPException(status_code=404, detail="install the app first")
+    _store().confirm_webhook(location_id)
+    return {"ok": True}
+
+
 @app.get("/oauth/callback")
 async def oauth_callback(code: str | None = None, error: str | None = None):
     """Handle the GHL OAuth redirect after a sub-account installs the app."""
@@ -83,17 +116,12 @@ async def oauth_callback(code: str | None = None, error: str | None = None):
     )
     s = get_settings()
     base = (s.public_base_url or s.ghl_redirect_uri.rsplit("/oauth", 1)[0]).rstrip("/")
-    inbound_url = f"{base}/bulkgate/inbound/{webhook_token}"
+    setup_url = f"{base}/setup?locationId={bundle.location_id}"
     log.info("Installed location %s", bundle.location_id)
     return HTMLResponse(
         "<h2>✅ Bulkgate SMS connected to GoHighLevel</h2>"
-        "<p>Finish setup:</p><ol>"
-        "<li>Enter your Bulkgate Application ID + token (admin step).</li>"
-        f"<li>Set this URL as your Bulkgate <b>incoming/DLR</b> callback:<br>"
-        f"<code>{inbound_url}</code></li>"
-        "<li>In your sub-account: Settings &rarr; Phone Numbers &rarr; Advanced "
-        "&rarr; SMS Provider &rarr; select this provider &rarr; Save.</li>"
-        "</ol>"
+        f'<p>Finish setup on the <a href="{setup_url}">setup page</a> — '
+        "enter your Bulkgate Application ID + token and connect the webhook.</p>"
     )
 
 
@@ -157,8 +185,7 @@ async def set_credentials(request: Request, x_admin_token: str | None = Header(d
     Body: {location_id, bulkgate_app_id, bulkgate_app_token,
            sender_id_value?, sender_id?, country?}
 
-    NOTE: For production, protect this behind real auth / a custom settings page
-    (GHL Custom Page / External Auth). This MVP endpoint is intentionally minimal.
+    Used both by the /setup Custom Page and for manual admin testing.
     """
     body = await request.json()
     location_id = body.get("location_id")

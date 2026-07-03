@@ -27,13 +27,14 @@ from app.crypto import decrypt, encrypt
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS installations (
     location_id            TEXT PRIMARY KEY,
-    company_id             TEXT,
+    company_id              TEXT,
     bulkgate_app_id_enc    TEXT,
     bulkgate_app_token_enc TEXT,
     sender_id              TEXT DEFAULT 'gSystem',
     sender_id_value        TEXT,
     country                TEXT DEFAULT 'hu',
     unicode_mode           TEXT DEFAULT 'never',
+    webhook_confirmed_at   INTEGER DEFAULT 0,
     conversation_provider_id TEXT,
     access_token_enc       TEXT,
     refresh_token_enc      TEXT,
@@ -93,13 +94,15 @@ class Store:
     def _init_db(self) -> None:
         with self._conn() as conn:
             conn.executescript(_SCHEMA)
-            # Lightweight migration for DBs created before unicode_mode existed.
-            try:
-                conn.execute(
-                    "ALTER TABLE installations ADD COLUMN unicode_mode TEXT DEFAULT 'never'"
-                )
-            except sqlite3.OperationalError:
-                pass  # column already exists
+            # Lightweight migrations for DBs created before these columns existed.
+            for ddl in (
+                "ALTER TABLE installations ADD COLUMN unicode_mode TEXT DEFAULT 'never'",
+                "ALTER TABLE installations ADD COLUMN webhook_confirmed_at INTEGER DEFAULT 0",
+            ):
+                try:
+                    conn.execute(ddl)
+                except sqlite3.OperationalError:
+                    pass  # column already exists
 
     # ----------------------------------------------------------------- install
     def upsert_installation(
@@ -189,6 +192,15 @@ class Store:
                 ),
             )
 
+    def confirm_webhook(self, location_id: str) -> None:
+        """Mark that the installer has confirmed pasting the inbound URL into Bulkgate."""
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE installations SET webhook_confirmed_at = ?, updated_at = ? "
+                "WHERE location_id = ?",
+                (_now(), _now(), location_id),
+            )
+
     def update_oauth_tokens(
         self,
         *,
@@ -224,6 +236,7 @@ class Store:
             "sender_id_value": row["sender_id_value"],
             "country": row["country"] or "hu",
             "unicode_mode": row["unicode_mode"] or "never",
+            "webhook_confirmed_at": row["webhook_confirmed_at"] or 0,
             "conversation_provider_id": row["conversation_provider_id"],
             "access_token": decrypt(row["access_token_enc"]),
             "refresh_token": decrypt(row["refresh_token_enc"]),
