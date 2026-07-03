@@ -3,6 +3,8 @@
 Endpoints
 ---------
 GET  /health                     liveness probe (Railway healthcheck)
+GET  /privacy                    standalone Privacy Policy (Marketplace listing)
+GET  /terms                      standalone Terms of Service (Marketplace listing)
 GET  /oauth/callback             GHL OAuth install redirect
 POST /ghl/outbound               GHL Conversation-Provider outbound webhook
 GET  /bulkgate/inbound/{token}   Bulkgate DLR + incoming SMS (per-install token)
@@ -23,6 +25,7 @@ from app import __version__
 from app.bulkgate_client import BulkgateClient
 from app.config import get_settings
 from app.ghl_client import GHLClient
+from app.legal import PRIVACY_HTML, TERMS_HTML
 from app.services import handle_bulkgate_callback, handle_outbound
 from app.store import get_store
 
@@ -42,6 +45,16 @@ def _store():
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "service": "ghl-bulkgate", "version": __version__}
+
+
+@app.get("/privacy")
+async def privacy() -> HTMLResponse:
+    return HTMLResponse(PRIVACY_HTML)
+
+
+@app.get("/terms")
+async def terms() -> HTMLResponse:
+    return HTMLResponse(TERMS_HTML)
 
 
 @app.get("/oauth/callback")
