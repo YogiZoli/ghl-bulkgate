@@ -1,0 +1,10 @@
+{
+  "contactId": "GKBhT6BfwY9mjzXAU3sq",
+  "locationId": "LOC_TEST_1",
+  "messageId": "MSG_GHL_001",
+  "type": "SMS",
+  "phone": "+36301234567",
+  "message": "Szia! Ez egy teszt üzenet a Bulkgate-en keresztül.",
+  "attachments": [],
+  "userId": "GK56r6wdJDrkUPd0xsmx"
+}

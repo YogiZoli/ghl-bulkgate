@@ -1,0 +1,25 @@
+{
+  "data": {
+    "total": {
+      "status": {
+        "sent": 1,
+        "accepted": 0,
+        "scheduled": 0,
+        "error": 0,
+        "blacklisted": 0,
+        "invalid_number": 0,
+        "invalid_sender": 0,
+        "duplicity_message": 0
+      }
+    },
+    "response": [
+      {
+        "status": "sent",
+        "message_id": "transactional-64afe5f28ffc2-0",
+        "part_id": ["transactional-64afe5f28ffc2-0"],
+        "number": "36301234567",
+        "channel": "sms"
+      }
+    ]
+  }
+}

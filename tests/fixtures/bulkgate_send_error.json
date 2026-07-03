@@ -1,0 +1,6 @@
+{
+  "type": "invalid_phone_number",
+  "code": 400,
+  "error": "Invalid phone number",
+  "detail": null
+}
