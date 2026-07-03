@@ -82,9 +82,10 @@ error → top-level `{type, code, error}`.
 - **Unicode cost protection:** Hungarian `ő`/`ű` force UCS-2 (70 chars/segment
   → 2-3× cost). Default `UNICODE_MODE=never` keeps `unicode:false` so Bulkgate
   transliterates accents (`ő`→`o`) at GSM-7 pricing. Set `auto` for real UCS-2.
-- **Endpoint:** the proven-working VoxFlow path was `/advanced/promotional`;
-  transactional requires the Transactional module enabled on the installer's
-  Bulkgate account. Configurable via `BULKGATE_API_URL`.
+- **Endpoint:** default is `/advanced/promotional` — the field-proven VoxFlow
+  path, available on every account. `/advanced/transactional` requires the
+  Transactional module enabled on the installer's Bulkgate account.
+  Configurable via `BULKGATE_API_URL`.
 DLR/incoming are delivered to your callback **via GET query params**: `status`
 (1 delivered · 2 buffered · 3 not_delivered · 10 incoming · 13 seen), `smsID`,
 `to`, `price`, and for status 10 also `from` + `message`.

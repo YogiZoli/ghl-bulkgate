@@ -47,8 +47,11 @@ class Settings(BaseSettings):
     database_path: str = "./ghl_bulkgate.db"
 
     # --- Bulkgate ---
+    # Promotional = field-proven default (VoxFlow live tests, works on every
+    # account). Transactional needs the module enabled on the installer's
+    # Bulkgate account — switch here if desired.
     bulkgate_api_url: str = (
-        "https://portal.bulkgate.com/api/2.0/advanced/transactional"
+        "https://portal.bulkgate.com/api/2.0/advanced/promotional"
     )
     default_country: str = "hu"
     # HU carriers do not support text sender IDs (gText) — Bulkgate support

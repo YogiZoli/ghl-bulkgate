@@ -30,7 +30,10 @@ import httpx
 
 from app.sms_text import needs_unicode, segment_count
 
-DEFAULT_API_URL = "https://portal.bulkgate.com/api/2.0/advanced/transactional"
+# Promotional is the default: it is the field-proven endpoint (VoxFlow live
+# tests) and available on every Bulkgate account. Transactional requires the
+# Transactional module to be enabled per account — switch via BULKGATE_API_URL.
+DEFAULT_API_URL = "https://portal.bulkgate.com/api/2.0/advanced/promotional"
 
 
 @dataclass
