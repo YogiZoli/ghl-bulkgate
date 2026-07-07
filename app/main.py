@@ -23,7 +23,7 @@ import json
 import logging
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app import __version__
 from app.bulkgate_client import BulkgateClient
@@ -121,11 +121,8 @@ async def oauth_callback(code: str | None = None, error: str | None = None):
     base = (s.public_base_url or s.ghl_redirect_uri.rsplit("/oauth", 1)[0]).rstrip("/")
     setup_url = f"{base}/setup?locationId={bundle.location_id}"
     log.info("Installed location %s", bundle.location_id)
-    return HTMLResponse(
-        "<h2>✅ Bulkgate SMS connected to GoHighLevel</h2>"
-        f'<p>Finish setup on the <a href="{setup_url}">setup page</a> — '
-        "enter your Bulkgate Application ID + token and connect the webhook.</p>"
-    )
+    # Send the installer straight to the setup page — no extra click needed.
+    return RedirectResponse(url=setup_url, status_code=303)
 
 
 @app.post("/ghl/webhook")
