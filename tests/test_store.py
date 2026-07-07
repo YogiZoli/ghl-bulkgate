@@ -101,6 +101,25 @@ def test_pinned_webhook_token(monkeypatch):
     assert store_mod._pinned_token("LOC_Z") is None
 
 
+def test_pinned_token_overrides_at_read_and_routes_inbound(installed_store, monkeypatch):
+    from types import SimpleNamespace
+
+    import app.store as store_mod
+
+    monkeypatch.setattr(
+        store_mod,
+        "get_settings",
+        lambda: SimpleNamespace(pinned_webhook_tokens="LOC_TEST_1:PINNEDTOK"),
+    )
+    # Reading the install presents the pinned token, even though the stored
+    # row still has its original token.
+    inst = installed_store.get_installation("LOC_TEST_1")
+    assert inst["webhook_token"] == "PINNEDTOK"
+    # An inbound callback hitting the pinned URL routes to the right install.
+    found = installed_store.get_installation_by_webhook_token("PINNEDTOK")
+    assert found["location_id"] == "LOC_TEST_1"
+
+
 def test_webhook_token_stable_across_reinstall(installed_store):
     before = installed_store.get_installation("LOC_TEST_1")["webhook_token"]
     # Simulate uninstall (purge) then reinstall.

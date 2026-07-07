@@ -89,6 +89,19 @@ def _pinned_token(location_id: str) -> Optional[str]:
     return None
 
 
+def _pinned_location_for_token(token: str) -> Optional[str]:
+    """Reverse of :func:`_pinned_token` — which location a pinned token maps to."""
+    raw = get_settings().pinned_webhook_tokens or ""
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair or ":" not in pair:
+            continue
+        loc, _, tok = pair.partition(":")
+        if tok.strip() == token and loc.strip():
+            return loc.strip()
+    return None
+
+
 def _derive_webhook_token(location_id: str) -> str:
     """Stable, unguessable inbound-webhook token for a location.
 
@@ -260,6 +273,10 @@ class Store:
             )
 
     def _row_to_installation(self, row: sqlite3.Row) -> dict:
+        # A pinned location always presents its pinned inbound token, even if
+        # the stored row still has an older one — so the fixed Bulkgate-side
+        # URL keeps working with zero re-config.
+        webhook_token = _pinned_token(row["location_id"]) or row["webhook_token"]
         return {
             "location_id": row["location_id"],
             "company_id": row["company_id"],
@@ -274,7 +291,7 @@ class Store:
             "access_token": decrypt(row["access_token_enc"]),
             "refresh_token": decrypt(row["refresh_token_enc"]),
             "token_expires_at": row["token_expires_at"] or 0,
-            "webhook_token": row["webhook_token"],
+            "webhook_token": webhook_token,
         }
 
     def get_installation(self, location_id: str) -> Optional[dict]:
@@ -289,7 +306,12 @@ class Store:
             row = conn.execute(
                 "SELECT * FROM installations WHERE webhook_token = ?", (token,)
             ).fetchone()
-            return self._row_to_installation(row) if row else None
+            if row:
+                return self._row_to_installation(row)
+        # Pinned-token fallback: the incoming token is a pinned one whose row
+        # may still hold a different stored token.
+        loc = _pinned_location_for_token(token)
+        return self.get_installation(loc) if loc else None
 
     def delete_installation(self, location_id: str) -> bool:
         """Hard-delete an installation and all data tied to it.
