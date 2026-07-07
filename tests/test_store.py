@@ -82,3 +82,12 @@ def test_delete_installation_purges_everything(installed_store):
 
     # Deleting a non-existent install is a harmless no-op.
     assert installed_store.delete_installation("NOPE") is False
+
+
+def test_webhook_token_stable_across_reinstall(installed_store):
+    before = installed_store.get_installation("LOC_TEST_1")["webhook_token"]
+    # Simulate uninstall (purge) then reinstall.
+    installed_store.delete_installation("LOC_TEST_1")
+    installed_store.upsert_installation(location_id="LOC_TEST_1")
+    after = installed_store.get_installation("LOC_TEST_1")["webhook_token"]
+    assert after == before  # same inbound URL — no re-paste into Bulkgate needed

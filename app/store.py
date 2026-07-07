@@ -15,7 +15,9 @@ Secrets are encrypted with Fernet (see app.crypto) before being stored, so the
 """
 from __future__ import annotations
 
-import secrets
+import base64
+import hashlib
+import hmac
 import sqlite3
 import time
 from contextlib import contextmanager
@@ -74,6 +76,19 @@ def _now() -> int:
     return int(time.time())
 
 
+def _derive_webhook_token(location_id: str) -> str:
+    """Stable, unguessable inbound-webhook token for a location.
+
+    Derived deterministically as HMAC-SHA256(fernet_key, location_id) so that
+    re-installing the app yields the SAME inbound URL — the installer never has
+    to re-paste it into Bulkgate after a reinstall. The server secret keeps it
+    unguessable, so credentials are still safely purged on uninstall.
+    """
+    key = get_settings().fernet_key.encode("utf-8")
+    digest = hmac.new(key, location_id.encode("utf-8"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+
+
 class Store:
     """Thin SQLite wrapper. One instance is shared across the app."""
 
@@ -121,10 +136,13 @@ class Store:
                 "SELECT webhook_token FROM installations WHERE location_id = ?",
                 (location_id,),
             ).fetchone()
+            # Stable per-location token: reuse the existing one if present,
+            # otherwise derive it deterministically so a reinstall reproduces
+            # the same inbound URL (no re-pasting into Bulkgate).
             webhook_token = (
                 existing["webhook_token"]
                 if existing and existing["webhook_token"]
-                else secrets.token_urlsafe(24)
+                else _derive_webhook_token(location_id)
             )
             conn.execute(
                 """
