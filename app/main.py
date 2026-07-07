@@ -119,10 +119,15 @@ async def oauth_callback(code: str | None = None, error: str | None = None):
     )
     s = get_settings()
     base = (s.public_base_url or s.ghl_redirect_uri.rsplit("/oauth", 1)[0]).rstrip("/")
-    setup_url = f"{base}/setup?locationId={bundle.location_id}"
     log.info("Installed location %s", bundle.location_id)
-    # Send the installer straight to the setup page — no extra click needed.
-    return RedirectResponse(url=setup_url, status_code=303)
+    # Send the installer back INTO GHL, straight to the "Bulkgate Setup"
+    # left-menu Custom Page (which renders our /setup inside a GHL iframe), so
+    # the whole onboarding stays within GoHighLevel — never on the raw URL.
+    in_ghl_url = (
+        f"{s.ghl_app_base_url.rstrip('/')}/v2/location/{bundle.location_id}"
+        f"/custom-page-link/{s.ghl_setup_page_link_id}"
+    )
+    return RedirectResponse(url=in_ghl_url, status_code=303)
 
 
 @app.post("/ghl/webhook")

@@ -136,7 +136,7 @@ def render_setup_page(
     if confirmed:
         step2_tail = (
             f'<div class="done-banner">{_CHECK_SVG}'
-            "<span>All set — Bulkgate SMS is connected. You can close this page.</span></div>"
+            "<span>All set — Bulkgate SMS is connected and ready to use.</span></div>"
         )
     else:
         step2_tail = (
@@ -164,11 +164,11 @@ def render_setup_page(
 
   <div class="field">
     <label for="appId">Application ID</label>
-    <input type="text" id="appId" placeholder="e.g. 38296" value="{app_id}" autocomplete="off">
+    <input type="text" id="appId" placeholder="Your 5-digit number, e.g. 12345" value="{app_id}" autocomplete="off">
   </div>
   <div class="field">
     <label for="appToken">Application Token</label>
-    <input type="text" id="appToken" placeholder="Paste your Application Token" autocomplete="off">
+    <input type="text" id="appToken" placeholder="Long code of letters &amp; numbers" autocomplete="off">
   </div>
   <div class="rowbtn"><button class="btn btn-primary" onclick="saveCreds()">Save &amp; continue</button></div>
   <div id="credsMsg" class="msg"></div>

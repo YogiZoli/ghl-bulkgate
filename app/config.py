@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     # provider" model (then it is not required by the inbound API).
     ghl_conversation_provider_id: str = ""
 
+    # GHL app base (where sub-accounts live) + the Custom Page link id for the
+    # "Bulkgate Setup" left-menu page. After install we redirect the user to
+    # this page INSIDE GHL (iframe) instead of the standalone Railway URL, so
+    # the whole onboarding stays within GoHighLevel.
+    ghl_app_base_url: str = "https://app.gohighlevel.com"
+    ghl_setup_page_link_id: str = "6a47be786f8eed83db89d188"
+
     # Status to write back to GHL when Bulkgate ACCEPTS the message.
     # "accepted" is NOT delivery (Bulkgate can accept and the carrier still
     # silently drops it — see support ticket HZL-CTQKD-699), so we report
