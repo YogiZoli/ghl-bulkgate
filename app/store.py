@@ -258,6 +258,26 @@ class Store:
             ).fetchone()
             return self._row_to_installation(row) if row else None
 
+    def delete_installation(self, location_id: str) -> bool:
+        """Hard-delete an installation and all data tied to it.
+
+        Called on the GHL ``UNINSTALL`` webhook so we never retain a user's
+        (encrypted) Bulkgate credentials or OAuth tokens after they remove the
+        app. Also purges the location's message map and opt-out list. Returns
+        True if an installation row was actually deleted.
+        """
+        with self._conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM installations WHERE location_id = ?", (location_id,)
+            )
+            conn.execute(
+                "DELETE FROM message_map WHERE location_id = ?", (location_id,)
+            )
+            conn.execute(
+                "DELETE FROM optouts WHERE location_id = ?", (location_id,)
+            )
+            return cur.rowcount > 0
+
     # -------------------------------------------------------------- message map
     def save_message_map(
         self,

@@ -52,3 +52,33 @@ def test_optouts(installed_store):
 def test_event_idempotency(installed_store):
     assert installed_store.mark_event("evt:1") is True
     assert installed_store.mark_event("evt:1") is False
+
+
+def test_delete_installation_purges_everything(installed_store):
+    installed_store.save_message_map(
+        ghl_message_id="M1",
+        bulkgate_message_id="B1",
+        location_id="LOC_TEST_1",
+        direction="outbound",
+    )
+    installed_store.add_optout("LOC_TEST_1", "36301234567")
+
+    assert installed_store.delete_installation("LOC_TEST_1") is True
+
+    # Credentials/tokens gone.
+    assert installed_store.get_installation("LOC_TEST_1") is None
+    # Raw DB rows for this location gone too (no lingering secrets).
+    conn = sqlite3.connect(installed_store.path)
+    assert conn.execute(
+        "SELECT COUNT(*) FROM installations WHERE location_id=?", ("LOC_TEST_1",)
+    ).fetchone()[0] == 0
+    assert conn.execute(
+        "SELECT COUNT(*) FROM message_map WHERE location_id=?", ("LOC_TEST_1",)
+    ).fetchone()[0] == 0
+    assert conn.execute(
+        "SELECT COUNT(*) FROM optouts WHERE location_id=?", ("LOC_TEST_1",)
+    ).fetchone()[0] == 0
+    conn.close()
+
+    # Deleting a non-existent install is a harmless no-op.
+    assert installed_store.delete_installation("NOPE") is False

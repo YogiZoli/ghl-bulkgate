@@ -8,6 +8,7 @@ GET  /terms                      standalone Terms of Service (Marketplace listin
 GET  /setup                      onboarding Custom Page (Bulkgate credentials + webhook)
 POST /setup/confirm              installer confirms webhook is wired up in Bulkgate
 GET  /oauth/callback             GHL OAuth install redirect
+POST /ghl/webhook                GHL app webhook (UNINSTALL purges credentials)
 POST /ghl/outbound               GHL Conversation-Provider outbound webhook
 GET  /bulkgate/inbound/{token}   Bulkgate DLR + incoming SMS (per-install token)
 POST /bulkgate/inbound/{token}   (same, in case Bulkgate is set to POST)
@@ -18,6 +19,7 @@ outbound, surfaced as GHL message-status updates rather than HTTP errors.
 """
 from __future__ import annotations
 
+import json
 import logging
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -28,6 +30,7 @@ from app.bulkgate_client import BulkgateClient
 from app.config import get_settings
 from app.ghl_client import GHLClient
 from app.legal import PRIVACY_HTML, TERMS_HTML
+from app.ghl_webhook import verify_webhook
 from app.services import handle_bulkgate_callback, handle_outbound
 from app.setup_page import render_setup_page
 from app.store import get_store
@@ -123,6 +126,38 @@ async def oauth_callback(code: str | None = None, error: str | None = None):
         f'<p>Finish setup on the <a href="{setup_url}">setup page</a> — '
         "enter your Bulkgate Application ID + token and connect the webhook.</p>"
     )
+
+
+@app.post("/ghl/webhook")
+async def ghl_webhook(request: Request):
+    """GHL Marketplace app-level webhook (default webhook URL).
+
+    Receives INSTALL / UNINSTALL (and any other subscribed) events. On
+    UNINSTALL we hard-delete the installation so the user's encrypted Bulkgate
+    credentials and OAuth tokens are not retained after they remove the app.
+
+    The signature is verified against GHL's published public key over the raw
+    body bytes; unverified requests are rejected so nobody can spoof a wipe.
+    Always returns 200 on accepted events so GHL does not retry needlessly.
+    """
+    raw = await request.body()
+    if not verify_webhook(raw, request.headers):
+        raise HTTPException(status_code=401, detail="invalid signature")
+
+    try:
+        payload = json.loads(raw)
+    except Exception:  # noqa: BLE001
+        payload = {}
+
+    event_type = (payload.get("type") or "").upper()
+    location_id = payload.get("locationId") or payload.get("location_id")
+
+    if event_type == "UNINSTALL" and location_id:
+        deleted = _store().delete_installation(location_id)
+        log.info("Uninstall for location %s (purged=%s)", location_id, deleted)
+        return JSONResponse({"received": True, "type": event_type, "purged": deleted})
+
+    return JSONResponse({"received": True, "type": event_type or "unknown"})
 
 
 @app.post("/ghl/outbound")
