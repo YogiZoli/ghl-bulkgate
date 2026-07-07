@@ -76,6 +76,19 @@ def _now() -> int:
     return int(time.time())
 
 
+def _pinned_token(location_id: str) -> Optional[str]:
+    """Return a pinned inbound token for this location, if configured."""
+    raw = get_settings().pinned_webhook_tokens or ""
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair or ":" not in pair:
+            continue
+        loc, _, tok = pair.partition(":")
+        if loc.strip() == location_id and tok.strip():
+            return tok.strip()
+    return None
+
+
 def _derive_webhook_token(location_id: str) -> str:
     """Stable, unguessable inbound-webhook token for a location.
 
@@ -136,14 +149,16 @@ class Store:
                 "SELECT webhook_token FROM installations WHERE location_id = ?",
                 (location_id,),
             ).fetchone()
-            # Stable per-location token: reuse the existing one if present,
-            # otherwise derive it deterministically so a reinstall reproduces
-            # the same inbound URL (no re-pasting into Bulkgate).
-            webhook_token = (
-                existing["webhook_token"]
-                if existing and existing["webhook_token"]
-                else _derive_webhook_token(location_id)
-            )
+            # Token precedence: an explicit pin (fixed Bulkgate-side URL) wins,
+            # then any existing token, otherwise a deterministic derived one so
+            # a reinstall reproduces the same inbound URL (no re-paste needed).
+            pinned = _pinned_token(location_id)
+            if pinned:
+                webhook_token = pinned
+            elif existing and existing["webhook_token"]:
+                webhook_token = existing["webhook_token"]
+            else:
+                webhook_token = _derive_webhook_token(location_id)
             conn.execute(
                 """
                 INSERT INTO installations (

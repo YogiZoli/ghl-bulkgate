@@ -84,6 +84,23 @@ def test_delete_installation_purges_everything(installed_store):
     assert installed_store.delete_installation("NOPE") is False
 
 
+def test_pinned_webhook_token(monkeypatch):
+    from types import SimpleNamespace
+
+    import app.store as store_mod
+
+    monkeypatch.setattr(
+        store_mod,
+        "get_settings",
+        lambda: SimpleNamespace(
+            pinned_webhook_tokens="LOC_X:fixedtok123, LOC_Y:other"
+        ),
+    )
+    assert store_mod._pinned_token("LOC_X") == "fixedtok123"
+    assert store_mod._pinned_token("LOC_Y") == "other"
+    assert store_mod._pinned_token("LOC_Z") is None
+
+
 def test_webhook_token_stable_across_reinstall(installed_store):
     before = installed_store.get_installation("LOC_TEST_1")["webhook_token"]
     # Simulate uninstall (purge) then reinstall.

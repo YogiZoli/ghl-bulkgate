@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     ghl_app_base_url: str = "https://app.gohighlevel.com"
     ghl_setup_page_link_id: str = "6a47be786f8eed83db89d188"
 
+    # Optional pinned inbound webhook tokens, for locations whose Bulkgate-side
+    # webhook URL is already fixed and cannot be changed (e.g. a shared test
+    # account). Format: "locationId:token,locationId2:token2". When a location
+    # is pinned, its inbound URL always uses that exact token so the existing
+    # Bulkgate config keeps working without edits.
+    pinned_webhook_tokens: str = ""
+
     # Status to write back to GHL when Bulkgate ACCEPTS the message.
     # "accepted" is NOT delivery (Bulkgate can accept and the carrier still
     # silently drops it — see support ticket HZL-CTQKD-699), so we report
