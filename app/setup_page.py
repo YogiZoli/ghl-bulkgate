@@ -74,6 +74,11 @@ input[type=text]:focus{outline:none;border-color:var(--brand-2);box-shadow:0 0 0
   color:var(--ok);border-radius:11px;padding:14px 16px;margin:2px 0 0 42px;font-weight:600}
 .done-banner svg{width:20px;height:20px;flex:0 0 auto}
 .notice{max-width:660px;margin:24px auto 0;text-align:center;color:var(--muted);font-size:.85rem}
+.gk{margin:0 0 0 42px}
+.gk p{margin:0 0 10px;font-size:.9rem;padding:11px 14px;border-radius:10px}
+.gk p:last-child{margin-bottom:0}
+.gk-ok{background:var(--okbg);border:1px solid #b8e6d4;color:#1a4a3a}
+.gk-no{background:#fff4f0;border:1px solid #f3d3c7;color:#7a3b2a}
 </style>
 """
 
@@ -197,6 +202,15 @@ def render_setup_page(
   </div></div>
 
   {step2_tail}
+</div>
+
+<div class="card">
+  <div class="chead"><div class="badge" style="background:var(--accent)">i</div><h2>Good to know</h2></div>
+  <p class="lead">What this app does today — and what it doesn't (yet).</p>
+  <div class="gk">
+    <p class="gk-ok"><strong>&#10003; Supported now:</strong> Two-way <strong>SMS</strong> — send messages, receive replies, and get delivery reports right inside your GHL conversations. Messages are sent from the phone number Bulkgate assigns to your account.</p>
+    <p class="gk-no"><strong>Not supported yet:</strong> Viber, WhatsApp, RCS, MMS / picture messages, and custom Sender IDs (showing your own brand name or number as the sender).</p>
+  </div>
 </div>
 
 <p class="notice">Your keys are encrypted before they're stored, and are permanently deleted the moment you uninstall the app.</p>
